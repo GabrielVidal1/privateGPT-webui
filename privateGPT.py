@@ -7,6 +7,8 @@ from langchain.vectorstores import Chroma
 from langchain.llms import GPT4All, LlamaCpp
 import os
 import argparse
+from langchain.chat_models import ChatOpenAI
+
 
 load_dotenv()
 
@@ -30,6 +32,13 @@ def main():
     callbacks = [] if args.mute_stream else [StreamingStdOutCallbackHandler()]
     # Prepare the LLM
     match model_type:
+        case "ChatGPT":
+            organizationId = os.environ.get('ORGANIZATION_ID')
+            apiKey = os.environ.get('OPENAI_API_KEY')
+            if organizationId is None or apiKey is None:
+                print("Please set the OPENAI_API_KEY and ORGANIZATION_ID environment variables.")
+                exit
+            llm = ChatOpenAI(temperature=0, openai_api_key=apiKey, openai_organization=organizationId, callbacks=callbacks, verbose=False, streaming=True)
         case "LlamaCpp":
             llm = LlamaCpp(model_path=model_path, n_ctx=model_n_ctx, callbacks=callbacks, verbose=False)
         case "GPT4All":
