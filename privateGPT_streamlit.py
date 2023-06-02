@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.llms import GPT4All, LlamaCpp
 import os
@@ -12,6 +12,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 
 load_dotenv()
 
+embeddings_model_type = os.environ.get('EMBEDDINGS_MODEL_TYPE')
 embeddings_model_name = os.environ.get("EMBEDDINGS_MODEL_NAME")
 persist_directory = os.environ.get('PERSIST_DIRECTORY')
 
@@ -37,7 +38,20 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
 @st.cache_resource(show_spinner="Loading Private GPT...")
 def get_qa_chain():
     # Parse the command line arguments
-    embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
+    match embeddings_model_type:
+        case "HuggingFace":
+            embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
+        case "OpenAI":
+            organizationId = os.environ.get('ORGANIZATION_ID')
+            apiKey = os.environ.get('OPENAI_API_KEY')
+            if organizationId is None or apiKey is None:
+                print("Please set the OPENAI_API_KEY and ORGANIZATION_ID environment variables.")
+                exit
+            embeddings = OpenAIEmbeddings(model=embeddings_model_name, openai_api_key=apiKey, openai_organization=organizationId)
+        case _default:
+            print(f"Model {embeddings_model_type} not supported!")
+            exit
+    
     db = Chroma(persist_directory=persist_directory, embedding_function=embeddings, client_settings=CHROMA_SETTINGS)
     retriever = db.as_retriever(search_kwargs={"k": target_source_chunks})
 

@@ -13,6 +13,8 @@ class MarkdownLoader(UnstructuredMarkdownLoader):
         **unstructured_kwargs: Any,
     ):
         """Initialize with file path."""
+
+        self.title = ""
         # if file_path is a string, get the title of the markdown file
         if isinstance(file_path, str):
             with open(file_path, "r") as f:

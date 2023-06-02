@@ -22,7 +22,7 @@ from langchain.document_loaders import (
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain.docstore.document import Document
 from constants import CHROMA_SETTINGS
 from markdownLoader import MarkdownLoader
@@ -34,6 +34,7 @@ load_dotenv()
 # Load environment variables
 persist_directory = os.environ.get('PERSIST_DIRECTORY')
 source_directory = os.environ.get('SOURCE_DIRECTORY', 'source_documents')
+embeddings_model_type = os.environ.get('EMBEDDINGS_MODEL_TYPE')
 embeddings_model_name = os.environ.get('EMBEDDINGS_MODEL_NAME')
 chunk_size = 3000
 chunk_overlap = 50
@@ -112,7 +113,7 @@ def load_documents(source_dir: str, ignored_files: List[str] = []) -> List[Docum
 
     return results
 
-def process_documents(ignored_files: List[str] = []) -> List[Document]:
+def process_documents(source_directory: str, ignored_files: List[str] = []) -> List[Document]:
     """
     Load documents and split in chunks
     """
@@ -141,21 +142,32 @@ def does_vectorstore_exist(persist_directory: str) -> bool:
     return False
 
 def main():
-    # Create embeddings
-    embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
-
+    match embeddings_model_type:
+        case "HuggingFace":
+            embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
+        case "OpenAI":
+            organizationId = os.environ.get('ORGANIZATION_ID')
+            apiKey = os.environ.get('OPENAI_API_KEY')
+            if organizationId is None or apiKey is None:
+                print("Please set the OPENAI_API_KEY and ORGANIZATION_ID environment variables.")
+                exit
+            embeddings = OpenAIEmbeddings(model=embeddings_model_name, openai_api_key=apiKey, openai_organization=organizationId)
+        case _default:
+            print(f"Model {embeddings_model_type} not supported!")
+            exit
+    
     if does_vectorstore_exist(persist_directory):
         # Update and store locally vectorstore
         print(f"Appending to existing vectorstore at {persist_directory}")
         db = Chroma(persist_directory=persist_directory, embedding_function=embeddings, client_settings=CHROMA_SETTINGS)
         collection = db.get()
-        texts = process_documents([metadata['source'] for metadata in collection['metadatas']])
+        texts = process_documents(source_directory, [metadata['source'] for metadata in collection['metadatas']])
         print(f"Creating embeddings. May take some minutes...")
         db.add_documents(texts)
     else:
         # Create and store locally vectorstore
         print("Creating new vectorstore")
-        texts = process_documents()
+        texts = process_documents(source_directory)
         print(f"Creating embeddings. May take some minutes...")
         db = Chroma.from_documents(texts, embeddings, persist_directory=persist_directory, client_settings=CHROMA_SETTINGS)
     db.persist()
