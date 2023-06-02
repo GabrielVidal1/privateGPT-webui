@@ -1,3 +1,24 @@
+# PrivateGPT Streamlit UI
+
+[PrivateGPT](https://github.com/imartinez/privateGPT) with a simple [streamlit](https://streamlit.io/) UI
+
+![Private GPT webui screenshot](/doc/screenshot.png)
+
+To start the web ui :
+```shell
+python -m streamlit run privateGPT.py
+```
+
+## Additionnal features
+
+* Can use OpenAI models if your computer is not fast enough, just update the `OPENAI_API_KEY` and `ORGANIZATION_ID` env variables in the .env file
+```shell
+OPENAI_API_KEY=sk-your-key-if-using-chatgpt
+ORGANIZATION_ID=org-your-key-if-using-chatgpt
+```
+You can also use OpenAI's embedding models, by changing the `EMBEDDINGS_MODEL_TYPE` to `OpenAI` and the `EMBEDDINGS_MODEL_NAME` to `text-embedding-ada-002`
+
+---
 # privateGPT
 Ask questions to your documents without an internet connection, using the power of LLMs. 100% private, no data leaves your execution environment at any point. You can ingest documents and ask questions without an internet connection!
 
